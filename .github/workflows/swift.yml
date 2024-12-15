@@ -1,0 +1,32 @@
+name: Swift CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+        
+    - name: Build
+      run: |
+        xcodebuild clean build -scheme VoiceAssistApp -destination "platform=macOS"
+        
+    - name: Run tests
+      run: |
+        xcodebuild test -scheme VoiceAssistApp -destination "platform=macOS" -enableCodeCoverage YES
+        
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

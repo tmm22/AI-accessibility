@@ -1,0 +1,61 @@
+name: Validate Documentation
+
+on:
+  pull_request:
+    paths:
+      - '**.swift'
+      - '**.md'
+      - 'Documentation.docc/**'
+
+jobs:
+  validate:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+          
+      - name: Build Documentation
+        run: |
+          xcodebuild docbuild \
+            -scheme VoiceAssistApp \
+            -destination 'platform=macOS' \
+            -derivedDataPath ./derived_data \
+            2>&1 | tee build_output.txt
+            
+      - name: Check for Documentation Warnings
+        run: |
+          if grep -q "warning:" build_output.txt; then
+            echo "Documentation warnings found:"
+            grep "warning:" build_output.txt
+            exit 1
+          fi
+          
+      - name: Validate Links
+        run: |
+          find Documentation.docc -type f -name "*.md" -exec \
+            grep -l "\[[^]]*\]([^)]*)" {} \; | while read file; do
+              echo "Checking links in $file"
+              grep -o "\[[^]]*\]([^)]*)" "$file" | while read link; do
+                url=$(echo "$link" | sed 's/.*(\(.*\))/\1/')
+                if [[ $url == http* ]]; then
+                  curl --output /dev/null --silent --head --fail "$url" || \
+                    (echo "Broken link found in $file: $url" && exit 1)
+                fi
+              done
+            done
+            
+      - name: Check Documentation Coverage
+        run: |
+          undocumented_count=$(grep -r "///" . | wc -l)
+          total_count=$(find . -name "*.swift" -exec wc -l {} \; | awk '{total += $1} END {print total}')
+          coverage=$((undocumented_count * 100 / total_count))
+          
+          if [ $coverage -lt 70 ]; then
+            echo "Documentation coverage is below 70% (current: $coverage%)"
+            exit 1
+          fi

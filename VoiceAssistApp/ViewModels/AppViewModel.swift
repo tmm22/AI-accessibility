@@ -17,10 +17,12 @@ class AppViewModel: ObservableObject {
     
     @Published var voiceStability: Double = 0.75
     @Published var voiceSimilarityBoost: Double = 0.75
+    @Published var voicePresets: [VoicePreset] = []
     
     @AppStorage("selectedVoiceId") private var selectedVoiceId: String?
     @AppStorage("voiceStability") private var storedVoiceStability: Double = 0.75
     @AppStorage("voiceSimilarityBoost") private var storedVoiceSimilarityBoost: Double = 0.75
+    @AppStorage("customPresets") private var storedCustomPresets: Data = Data()
     
     init(ttsService: TextToSpeechService, aiService: AIService) {
         self.ttsService = ttsService
@@ -30,8 +32,61 @@ class AppViewModel: ObservableObject {
         self.voiceStability = storedVoiceStability
         self.voiceSimilarityBoost = storedVoiceSimilarityBoost
         
+        // Load presets
+        loadPresets()
+        
         Task {
             await loadVoices()
+        }
+    }
+    
+    private func loadPresets() {
+        // Load default presets
+        voicePresets = VoicePreset.defaultPresets
+        
+        // Load custom presets
+        if !storedCustomPresets.isEmpty {
+            do {
+                let decoder = JSONDecoder()
+                let customPresets = try decoder.decode([VoicePreset].self, from: storedCustomPresets)
+                voicePresets.append(contentsOf: customPresets)
+            } catch {
+                print("Error loading custom presets: \(error)")
+            }
+        }
+    }
+    
+    func saveVoicePreset(_ preset: VoicePreset) {
+        // Only store custom presets
+        if preset.category == .custom {
+            var customPresets = voicePresets.filter { $0.category == .custom }
+            customPresets.append(preset)
+            
+            do {
+                let encoder = JSONEncoder()
+                storedCustomPresets = try encoder.encode(customPresets)
+            } catch {
+                print("Error saving custom preset: \(error)")
+            }
+        }
+        
+        // Add to current presets
+        voicePresets.append(preset)
+    }
+    
+    func deleteVoicePreset(_ preset: VoicePreset) {
+        // Only allow deleting custom presets
+        guard preset.category == .custom else { return }
+        
+        voicePresets.removeAll { $0.id == preset.id }
+        
+        // Update stored presets
+        let customPresets = voicePresets.filter { $0.category == .custom }
+        do {
+            let encoder = JSONEncoder()
+            storedCustomPresets = try encoder.encode(customPresets)
+        } catch {
+            print("Error updating stored presets: \(error)")
         }
     }
     

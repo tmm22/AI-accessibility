@@ -7,6 +7,8 @@ on:
       - '**.swift'
       - '**.md'
       - 'Documentation.docc/**'
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -20,23 +22,74 @@ jobs:
     
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       
       - name: Set up Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
           
+      - name: Update Version Info
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            DATE=$(date +%Y-%m-%d)
+            
+            # Update versions.json
+            jq --arg ver "$VERSION" --arg date "$DATE" \
+              '.versions = ([{"version": $ver, "title": "VoiceAssist " + $ver, "date": $date, "status": "current"}] + (.versions | map(if .status == "current" then . + {"status": "archived"} else . end)))' \
+              Documentation.docc/versions.json > temp.json && mv temp.json Documentation.docc/versions.json
+            
+            # Update current version
+            jq --arg ver "$VERSION" '.current = $ver' \
+              Documentation.docc/versions.json > temp.json && mv temp.json Documentation.docc/versions.json
+          fi
+          
       - name: Build Documentation
         run: |
+          # Build current version
           xcodebuild docbuild \
             -scheme VoiceAssistApp \
             -destination 'platform=macOS' \
             -derivedDataPath ./derived_data
-            
-      - name: Process Documentation
-        run: |
-          cp -r ./derived_data/Build/Products/Debug/VoiceAssist.doccarchive ./docs
           
+          # Copy to versioned directory
+          VERSION=$(jq -r '.current' Documentation.docc/versions.json)
+          mkdir -p ./docs/$VERSION
+          cp -r ./derived_data/Build/Products/Debug/VoiceAssist.doccarchive/* ./docs/$VERSION/
+          
+          # Build version selector
+          cat Documentation.docc/versions.json | jq -r '.versions[] | "<option value=\"/\(.version)/\">\(.title) (\(.date))</option>"' > ./docs/versions.html
+          
+      - name: Generate Version Archives
+        run: |
+          # Get all version tags
+          git tag -l 'v*' | while read -r tag; do
+            VERSION=${tag#v}
+            
+            # Skip if already built
+            if [ -d "./docs/$VERSION" ]; then
+              continue
+            fi
+            
+            # Checkout version
+            git checkout $tag
+            
+            # Build docs for version
+            xcodebuild docbuild \
+              -scheme VoiceAssistApp \
+              -destination 'platform=macOS' \
+              -derivedDataPath ./derived_data_$VERSION
+            
+            # Copy to versioned directory
+            mkdir -p ./docs/$VERSION
+            cp -r ./derived_data_$VERSION/Build/Products/Debug/VoiceAssist.doccarchive/* ./docs/$VERSION/
+          done
+          
+          # Return to original branch
+          git checkout ${GITHUB_REF#refs/heads/}
+            
       - name: Setup Pages
         uses: actions/configure-pages@v3
         
@@ -52,6 +105,7 @@ jobs:
   generate-changelog:
     runs-on: ubuntu-latest
     needs: build
+    if: startsWith(github.ref, 'refs/tags/')
     
     steps:
       - uses: actions/checkout@v3
@@ -60,14 +114,22 @@ jobs:
           
       - name: Generate Documentation Changelog
         run: |
-          echo "# Documentation Changes" > docs_changelog.md
-          echo "## Latest Changes" >> docs_changelog.md
-          git log -p --no-merges Documentation.docc/ | grep -E "^\+.*" >> docs_changelog.md
+          VERSION=${GITHUB_REF#refs/tags/v}
           
-      - name: Create Issue on Documentation Update
-        uses: peter-evans/create-issue-from-file@v4
+          echo "# Documentation Changes for Version $VERSION" > docs_changelog.md
+          echo "## Changes Since Last Release" >> docs_changelog.md
+          
+          # Get the previous version tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^)
+          
+          # Generate changelog
+          git log --no-merges "$PREV_TAG..$GITHUB_REF" Documentation.docc/ | \
+            grep -E "^\+.*" >> docs_changelog.md
+          
+      - name: Create Release Notes
+        uses: softprops/action-gh-release@v1
         with:
-          title: Documentation Updates Available
-          content-filepath: ./docs_changelog.md
-          labels: documentation
-          assignees: tmm22
+          files: docs_changelog.md
+          body_path: docs_changelog.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

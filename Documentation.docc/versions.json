@@ -1,0 +1,17 @@
+{
+  "current": "1.0.0",
+  "versions": [
+    {
+      "version": "1.0.0",
+      "title": "VoiceAssist 1.0",
+      "date": "2024-12-15",
+      "status": "current",
+      "changes": [
+        "Initial release",
+        "Speech recognition",
+        "Text-to-speech with Eleven Labs",
+        "Grammar correction with OpenAI/Anthropic"
+      ]
+    }
+  ]
+}

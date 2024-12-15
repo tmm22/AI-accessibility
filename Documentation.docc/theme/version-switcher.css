@@ -1,0 +1,38 @@
+.version-container {
+    display: flex;
+    align-items: center;
+    margin: 1rem;
+    padding: 0.5rem;
+    background: var(--color-fill);
+    border-radius: 6px;
+}
+
+.version-container label {
+    margin-right: 0.5rem;
+    color: var(--color-text);
+}
+
+.version-selector {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-background);
+    color: var(--color-text);
+    font-size: 0.9rem;
+}
+
+.version-selector:hover {
+    border-color: var(--color-link);
+}
+
+.version-selector:focus {
+    outline: none;
+    border-color: var(--color-link);
+    box-shadow: 0 0 0 2px var(--color-link-background);
+}
+
+@media (prefers-color-scheme: dark) {
+    .version-selector {
+        background: var(--color-fill);
+    }
+}

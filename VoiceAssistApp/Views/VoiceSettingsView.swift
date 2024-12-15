@@ -231,15 +231,19 @@ struct SavePresetView: View {
                 }
             }
             .navigationTitle("Save Preset")
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    isPresented = false
-                },
-                trailing: Button("Save") {
-                    onSave()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
                 }
-                .disabled(name.isEmpty)
-            )
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave()
+                    }
+                    .disabled(name.isEmpty)
+                }
+            }
         }
     }
 }

@@ -9,7 +9,7 @@ class TextToSpeechService: ObservableObject {
     @Published var isGenerating = false
     @Published var error: Error?
     
-    struct Voice: Identifiable, Codable {
+    struct Voice: Identifiable, Codable, Hashable {
         let id: String
         let name: String
         let previewURL: String?
@@ -18,13 +18,35 @@ class TextToSpeechService: ObservableObject {
             case id, name
             case previewURL = "preview_url"
         }
+        
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+        
+        static func == (lhs: Voice, rhs: Voice) -> Bool {
+            lhs.id == rhs.id
+        }
     }
     
-    struct VoiceSettings {
+    struct VoiceSettings: Codable, Equatable, Hashable {
         var stability: Double
         var similarityBoost: Double
         
         static let `default` = VoiceSettings(stability: 0.75, similarityBoost: 0.75)
+        
+        enum CodingKeys: String, CodingKey {
+            case stability
+            case similarityBoost = "similarity_boost"
+        }
+        
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(stability)
+            hasher.combine(similarityBoost)
+        }
+        
+        static func == (lhs: VoiceSettings, rhs: VoiceSettings) -> Bool {
+            lhs.stability == rhs.stability && lhs.similarityBoost == rhs.similarityBoost
+        }
     }
     
     init(apiKey: String) {

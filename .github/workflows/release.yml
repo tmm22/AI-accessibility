@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+          
+      - name: Build App
+        run: |
+          xcodebuild clean archive \
+            -scheme VoiceAssistApp \
+            -configuration Release \
+            -archivePath VoiceAssistApp.xcarchive
+            
+      - name: Export App
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath VoiceAssistApp.xcarchive \
+            -exportOptionsPlist exportOptions.plist \
+            -exportPath ./export
+            
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          # Get the latest tag
+          latest_tag=$(git describe --tags --abbrev=0)
+          # Get the previous tag
+          previous_tag=$(git describe --tags --abbrev=0 HEAD^)
+          # Generate changelog
+          echo "CHANGELOG=$(git log --pretty=format:'- %s' $previous_tag..$latest_tag)" >> $GITHUB_OUTPUT
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./export/VoiceAssistApp.app
+          body: |
+            ## What's New
+            ${{ steps.release_notes.outputs.CHANGELOG }}
+            
+            ## Installation
+            1. Download the VoiceAssistApp.app
+            2. Move it to your Applications folder
+            3. Launch the app and follow the setup instructions
+            
+            ## Requirements
+            - macOS 12.0 or later
+            - API keys for OpenAI/Anthropic and Eleven Labs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

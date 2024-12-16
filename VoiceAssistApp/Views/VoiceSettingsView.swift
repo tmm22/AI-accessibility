@@ -4,6 +4,7 @@ struct VoiceSettingsView: View {
     @ObservedObject var viewModel: AppViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingSavePreset = false
+    @State private var showingAPISettings = false
     @State private var searchText = ""
     
     var filteredPresets: [VoicePreset] {
@@ -105,10 +106,18 @@ struct VoiceSettingsView: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: { showingAPISettings = true }) {
+                        Label("API Settings", systemImage: "key")
+                    }
+                }
             }
         }
         .sheet(isPresented: $showingSavePreset) {
             SavePresetView(viewModel: viewModel, isPresented: $showingSavePreset)
+        }
+        .sheet(isPresented: $showingAPISettings) {
+            APISettingsView(viewModel: viewModel)
         }
     }
 }

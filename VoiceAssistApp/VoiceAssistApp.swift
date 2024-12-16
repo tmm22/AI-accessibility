@@ -2,13 +2,7 @@ import SwiftUI
 
 @main
 struct VoiceAssistApp: App {
-    @StateObject private var viewModel: AppViewModel
-    
-    init() {
-        let ttsService = TextToSpeechService(apiKey: ProcessInfo.processInfo.environment["ELEVEN_LABS_API_KEY"] ?? "")
-        let aiService = AIService(apiKey: ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? "")
-        _viewModel = StateObject(wrappedValue: AppViewModel(ttsService: ttsService, aiService: aiService))
-    }
+    @StateObject private var viewModel = AppViewModel()
     
     var body: some Scene {
         WindowGroup {
@@ -17,9 +11,26 @@ struct VoiceAssistApp: App {
                 .background(Color(.windowBackgroundColor))
         }
         .windowStyle(.hiddenTitleBar)
-        .windowToolbarStyle(.unified)
         .commands {
-            CommandGroup(replacing: .newItem) { }
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings") {
+                    NSApp.sendAction(#selector(NSPopover.performClose(_:)), to: nil, from: nil)
+                    let settingsWindow = NSWindow(
+                        contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+                        styleMask: [.titled, .closable],
+                        backing: .buffered,
+                        defer: false
+                    )
+                    settingsWindow.title = "Settings"
+                    settingsWindow.contentView = NSHostingView(
+                        rootView: APISettingsView(viewModel: viewModel)
+                            .frame(width: 400, height: 300)
+                    )
+                    settingsWindow.center()
+                    settingsWindow.makeKeyAndOrderFront(nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
         }
     }
 }

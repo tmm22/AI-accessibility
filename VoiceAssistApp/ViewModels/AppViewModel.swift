@@ -2,8 +2,8 @@ import SwiftUI
 
 @MainActor
 class AppViewModel: ObservableObject {
-    private let ttsService: TextToSpeechService
-    private let aiService: AIService
+    private var ttsService: TextToSpeechService
+    private var aiService: AIService
     
     @Published var inputText = ""
     @Published var outputText = ""
@@ -16,22 +16,45 @@ class AppViewModel: ObservableObject {
     @Published var availableVoices: [TextToSpeechService.Voice] = []
     @Published var voicePresets: [VoicePreset] = []
     
+    @AppStorage("ElevenLabsAPIKey") var elevenLabsApiKey: String = ""
+    @AppStorage("OpenAIAPIKey") var openAIApiKey: String = ""
     @AppStorage("selectedVoiceId") private var selectedVoiceId: String?
     @AppStorage("voiceStability") private var storedVoiceStability: Double = 0.75
     @AppStorage("voiceSimilarityBoost") private var storedVoiceSimilarityBoost: Double = 0.75
     @AppStorage("customPresets") private var storedCustomPresets: Data = Data()
     
-    init(ttsService: TextToSpeechService, aiService: AIService) {
-        self.ttsService = ttsService
-        self.aiService = aiService
+    init() {
+        self.ttsService = TextToSpeechService(apiKey: "")
+        self.aiService = AIService(apiKey: "")
         
         // Load stored voice settings
         self.voiceSettings.stability = storedVoiceStability
         self.voiceSettings.similarityBoost = storedVoiceSimilarityBoost
         
+        loadAPIKeys()
+        
         Task {
             await loadVoices()
             loadPresets()
+        }
+    }
+    
+    func saveAPIKeys() {
+        ttsService = TextToSpeechService(apiKey: elevenLabsApiKey)
+        aiService = AIService(apiKey: openAIApiKey)
+        
+        Task {
+            await loadVoices()
+        }
+    }
+    
+    private func loadAPIKeys() {
+        if !elevenLabsApiKey.isEmpty {
+            ttsService = TextToSpeechService(apiKey: elevenLabsApiKey)
+        }
+        
+        if !openAIApiKey.isEmpty {
+            aiService = AIService(apiKey: openAIApiKey)
         }
     }
     

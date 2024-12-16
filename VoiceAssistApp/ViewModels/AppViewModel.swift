@@ -1,4 +1,3 @@
-import Foundation
 import SwiftUI
 
 @MainActor
@@ -9,14 +8,12 @@ class AppViewModel: ObservableObject {
     @Published var inputText = ""
     @Published var outputText = ""
     @Published var isProcessing = false
+    @Published var isGeneratingSpeech = false
     @Published var error: Error?
     
-    @Published var availableVoices: [TextToSpeechService.Voice] = []
     @Published var selectedVoice: TextToSpeechService.Voice?
-    @Published var isGeneratingSpeech = false
-    
-    @Published var voiceStability: Double = 0.75
-    @Published var voiceSimilarityBoost: Double = 0.75
+    @Published var voiceSettings = TextToSpeechService.VoiceSettings(stability: 0.75, similarityBoost: 0.75)
+    @Published var availableVoices: [TextToSpeechService.Voice] = []
     @Published var voicePresets: [VoicePreset] = []
     
     @AppStorage("selectedVoiceId") private var selectedVoiceId: String?
@@ -29,68 +26,60 @@ class AppViewModel: ObservableObject {
         self.aiService = aiService
         
         // Load stored voice settings
-        self.voiceStability = storedVoiceStability
-        self.voiceSimilarityBoost = storedVoiceSimilarityBoost
-        
-        // Load presets
-        loadPresets()
+        self.voiceSettings.stability = storedVoiceStability
+        self.voiceSettings.similarityBoost = storedVoiceSimilarityBoost
         
         Task {
             await loadVoices()
+            loadPresets()
         }
     }
     
-    private func loadPresets() {
-        // Load default presets
-        voicePresets = VoicePreset.defaultPresets
+    func correctGrammar() async {
+        guard !inputText.isEmpty else { return }
         
-        // Load custom presets
-        if !storedCustomPresets.isEmpty {
-            do {
-                let decoder = JSONDecoder()
-                let customPresets = try decoder.decode([VoicePreset].self, from: storedCustomPresets)
-                voicePresets.append(contentsOf: customPresets)
-            } catch {
-                print("Error loading custom presets: \(error)")
-            }
-        }
-    }
-    
-    func saveVoicePreset(_ preset: VoicePreset) {
-        // Only store custom presets
-        if preset.category == .custom {
-            var customPresets = voicePresets.filter { $0.category == .custom }
-            customPresets.append(preset)
-            
-            do {
-                let encoder = JSONEncoder()
-                storedCustomPresets = try encoder.encode(customPresets)
-            } catch {
-                print("Error saving custom preset: \(error)")
-            }
-        }
+        isProcessing = true
+        defer { isProcessing = false }
         
-        // Add to current presets
-        voicePresets.append(preset)
-    }
-    
-    func deleteVoicePreset(_ preset: VoicePreset) {
-        // Only allow deleting custom presets
-        guard preset.category == .custom else { return }
-        
-        voicePresets.removeAll { $0.id == preset.id }
-        
-        // Update stored presets
-        let customPresets = voicePresets.filter { $0.category == .custom }
         do {
-            let encoder = JSONEncoder()
-            storedCustomPresets = try encoder.encode(customPresets)
+            outputText = try await aiService.correctGrammar(inputText)
         } catch {
-            print("Error updating stored presets: \(error)")
+            self.error = error
         }
     }
     
-    func loadVoices() async {
+    func speakText(_ text: String) async {
+        guard !text.isEmpty, let voice = selectedVoice else { return }
+        
+        isGeneratingSpeech = true
+        defer { isGeneratingSpeech = false }
+        
+        do {
+            try await ttsService.generateSpeech(text: text, voiceId: voice.id, settings: voiceSettings)
+        } catch {
+            self.error = error
+        }
+    }
+    
+    func applyPreset(_ preset: VoicePreset) {
+        voiceSettings = preset.settings
+    }
+    
+    func savePreset(name: String, description: String, category: VoicePreset.Category, tags: [String]) {
+        let preset = VoicePreset(
+            id: UUID().uuidString,
+            name: name,
+            description: description,
+            settings: voiceSettings,
+            category: category,
+            tags: tags
+        )
+        
+        voicePresets.append(preset)
+        savePresets()
+    }
+    
+    private func loadVoices() async {
         do {
             availableVoices = try await ttsService.fetchVoices()
             if let voiceId = selectedVoiceId {
@@ -104,36 +93,19 @@ class AppViewModel: ObservableObject {
         }
     }
     
-    func correctGrammar() async {
-        isProcessing = true
-        defer { isProcessing = false }
-        
-        do {
-            outputText = try await aiService.correctGrammar(inputText)
-        } catch {
-            self.error = error
+    private func loadPresets() {
+        if let data = storedCustomPresets.isEmpty ? UserDefaults.standard.data(forKey: "VoicePresets") : storedCustomPresets,
+           let presets = try? JSONDecoder().decode([VoicePreset].self, from: data) {
+            voicePresets = presets
+        } else {
+            voicePresets = VoicePreset.defaultPresets
         }
     }
     
-    func speakText(_ text: String) async {
-        guard let voice = selectedVoice else { return }
-        isGeneratingSpeech = true
-        defer { isGeneratingSpeech = false }
-        
-        do {
-            let settings = TextToSpeechService.VoiceSettings(
-                stability: voiceStability,
-                similarityBoost: voiceSimilarityBoost
-            )
-            
-            let audioData = try await ttsService.generateSpeech(
-                text: text,
-                voiceId: voice.id,
-                settings: settings
-            )
-            try ttsService.playAudio(audioData)
-        } catch {
-            self.error = error
+    private func savePresets() {
+        if let data = try? JSONEncoder().encode(voicePresets) {
+            storedCustomPresets = data
+            UserDefaults.standard.set(data, forKey: "VoicePresets")
         }
     }
     
@@ -142,8 +114,8 @@ class AppViewModel: ObservableObject {
     }
     
     func updateVoiceSettings(stability: Double, similarityBoost: Double) {
-        voiceStability = stability
-        voiceSimilarityBoost = similarityBoost
+        voiceSettings.stability = stability
+        voiceSettings.similarityBoost = similarityBoost
         
         // Store settings
         storedVoiceStability = stability

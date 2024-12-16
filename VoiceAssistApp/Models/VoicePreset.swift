@@ -8,12 +8,14 @@ struct VoicePreset: Identifiable, Codable, Equatable {
     let category: Category
     let tags: [String]
     
-    enum Category: String, Codable, CaseIterable {
+    enum Category: String, Codable, CaseIterable, Identifiable {
         case conversation = "Conversation"
         case narrative = "Narrative"
         case professional = "Professional"
         case accessibility = "Accessibility"
         case custom = "Custom"
+        
+        var id: String { rawValue }
     }
     
     static let defaultPresets: [VoicePreset] = [
@@ -21,16 +23,16 @@ struct VoicePreset: Identifiable, Codable, Equatable {
         VoicePreset(
             id: "casual-chat",
             name: "Casual Chat",
-            description: "Natural, relaxed tone for everyday conversations",
-            settings: .init(stability: 0.65, similarityBoost: 0.75),
+            description: "Natural, relaxed voice for everyday conversations",
+            settings: .init(stability: 0.7, similarityBoost: 0.8),
             category: .conversation,
             tags: ["casual", "friendly", "natural"]
         ),
         VoicePreset(
             id: "clear-speech",
             name: "Clear Speech",
-            description: "Highly articulate for better understanding",
-            settings: .init(stability: 0.85, similarityBoost: 0.80),
+            description: "Highly articulate voice for clear communication",
+            settings: .init(stability: 0.9, similarityBoost: 0.7),
             category: .conversation,
             tags: ["clear", "articulate", "precise"]
         ),
@@ -39,54 +41,54 @@ struct VoicePreset: Identifiable, Codable, Equatable {
         VoicePreset(
             id: "storytelling",
             name: "Storytelling",
-            description: "Expressive and dynamic for engaging narratives",
-            settings: .init(stability: 0.55, similarityBoost: 0.70),
+            description: "Engaging voice for narrative content",
+            settings: .init(stability: 0.8, similarityBoost: 0.9),
             category: .narrative,
             tags: ["expressive", "dynamic", "engaging"]
         ),
         VoicePreset(
             id: "audiobook",
             name: "Audiobook",
-            description: "Consistent and clear for long-form content",
-            settings: .init(stability: 0.80, similarityBoost: 0.85),
+            description: "Professional voice for audiobook narration",
+            settings: .init(stability: 0.85, similarityBoost: 0.8),
             category: .narrative,
-            tags: ["consistent", "professional", "clear"]
+            tags: ["professional", "consistent", "clear"]
         ),
         
         // Professional Presets
         VoicePreset(
             id: "business",
             name: "Business",
-            description: "Professional and authoritative tone",
-            settings: .init(stability: 0.90, similarityBoost: 0.80),
+            description: "Professional voice for business communications",
+            settings: .init(stability: 0.95, similarityBoost: 0.7),
             category: .professional,
-            tags: ["professional", "formal", "business"]
+            tags: ["formal", "professional", "business"]
         ),
         VoicePreset(
             id: "presentation",
             name: "Presentation",
-            description: "Engaging yet professional for presentations",
-            settings: .init(stability: 0.75, similarityBoost: 0.85),
+            description: "Confident voice for presentations and speeches",
+            settings: .init(stability: 0.9, similarityBoost: 0.8),
             category: .professional,
-            tags: ["presentation", "engaging", "formal"]
+            tags: ["confident", "authoritative", "clear"]
         ),
         
         // Accessibility Presets
         VoicePreset(
             id: "screen-reader",
             name: "Screen Reader",
-            description: "Maximum clarity and consistency for accessibility",
-            settings: .init(stability: 0.95, similarityBoost: 0.90),
+            description: "Clear and consistent voice for screen reading",
+            settings: .init(stability: 1.0, similarityBoost: 0.6),
             category: .accessibility,
-            tags: ["accessibility", "clear", "consistent"]
+            tags: ["clear", "consistent", "accessible"]
         ),
         VoicePreset(
             id: "learning-support",
             name: "Learning Support",
-            description: "Clear and patient tone for educational content",
-            settings: .init(stability: 0.85, similarityBoost: 0.85),
+            description: "Patient voice for educational content",
+            settings: .init(stability: 0.9, similarityBoost: 0.7),
             category: .accessibility,
-            tags: ["education", "clear", "patient"]
+            tags: ["patient", "clear", "educational"]
         )
     ]
 }

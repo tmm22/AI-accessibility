@@ -2,190 +2,114 @@ import SwiftUI
 
 struct VoiceSettingsView: View {
     @ObservedObject var viewModel: AppViewModel
-    @State private var stability: Double = 0.75
-    @State private var similarityBoost: Double = 0.75
-    @State private var selectedPreset: VoicePreset?
+    @Environment(\.dismiss) private var dismiss
     @State private var showingSavePreset = false
-    @State private var newPresetName = ""
-    @State private var newPresetDescription = ""
-    @State private var selectedCategory = VoicePreset.Category.custom
     @State private var searchText = ""
     
-    private var filteredPresets: [VoicePreset] {
-        let presets = viewModel.voicePresets
+    var filteredPresets: [VoicePreset] {
         if searchText.isEmpty {
-            return presets
+            return viewModel.voicePresets
         }
-        return presets.filter { preset in
+        return viewModel.voicePresets.filter { preset in
             preset.name.localizedCaseInsensitiveContains(searchText) ||
             preset.description.localizedCaseInsensitiveContains(searchText) ||
             preset.tags.contains { $0.localizedCaseInsensitiveContains(searchText) }
         }
     }
     
-    private var presetsByCategory: [VoicePreset.Category: [VoicePreset]] {
-        Dictionary(grouping: filteredPresets) { $0.category }
-    }
-    
     var body: some View {
-        Form {
-            Section(header: Text("Voice Selection")) {
-                Picker("Voice", selection: $viewModel.selectedVoice) {
-                    ForEach(viewModel.availableVoices, id: \.id) { voice in
-                        Text(voice.name).tag(voice)
+        NavigationView {
+            List {
+                Section {
+                    Picker("Voice", selection: $viewModel.selectedVoice) {
+                        ForEach(viewModel.availableVoices, id: \.id) { voice in
+                            Text(voice.name).tag(voice)
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                } header: {
+                    Label("Voice Selection", systemImage: "person.wave.2")
                 }
-            }
-            
-            Section(header: Text("Presets")) {
-                SearchBar(text: $searchText)
                 
-                ForEach(VoicePreset.Category.allCases, id: \.self) { category in
-                    if let presets = presetsByCategory[category] {
-                        DisclosureGroup(category.rawValue) {
-                            ForEach(presets) { preset in
-                                VStack(alignment: .leading) {
-                                    HStack {
-                                        VStack(alignment: .leading) {
-                                            Text(preset.name)
-                                                .font(.headline)
-                                            Text(preset.description)
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        Spacer()
-                                        if preset == selectedPreset {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(.accentColor)
-                                        }
-                                    }
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        selectPreset(preset)
-                                    }
-                                    
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack {
-                                            ForEach(preset.tags, id: \.self) { tag in
-                                                Text(tag)
-                                                    .font(.caption)
-                                                    .padding(.horizontal, 8)
-                                                    .padding(.vertical, 4)
-                                                    .background(Color.secondary.opacity(0.2))
-                                                    .cornerRadius(8)
-                                            }
-                                        }
-                                    }
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Stability")
+                            Spacer()
+                            Text(String(format: "%.2f", viewModel.voiceSettings.stability))
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $viewModel.voiceSettings.stability, in: 0...1)
+                            .tint(.accentColor)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Similarity Boost")
+                            Spacer()
+                            Text(String(format: "%.2f", viewModel.voiceSettings.similarityBoost))
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $viewModel.voiceSettings.similarityBoost, in: 0...1)
+                            .tint(.accentColor)
+                    }
+                } header: {
+                    Label("Voice Parameters", systemImage: "slider.horizontal.3")
+                } footer: {
+                    Text("Adjust stability for consistent output and similarity boost for voice matching accuracy.")
+                }
+                
+                Section {
+                    SearchBar(text: $searchText)
+                    
+                    ForEach(filteredPresets) { preset in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(preset.name)
+                                .font(.headline)
+                            Text(preset.description)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            HStack {
+                                ForEach(preset.tags, id: \.self) { tag in
+                                    Text(tag)
+                                        .font(.caption)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.accentColor.opacity(0.1))
+                                        .cornerRadius(8)
                                 }
-                                .padding(.vertical, 4)
                             }
+                            .padding(.top, 4)
+                        }
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            viewModel.applyPreset(preset)
                         }
                     }
+                } header: {
+                    Label("Voice Presets", systemImage: "square.stack.3d.up")
                 }
             }
-            
-            Section(header: Text("Voice Parameters")) {
-                VStack(alignment: .leading) {
-                    HStack {
-                        Text("Stability")
-                        Spacer()
-                        Text(String(format: "%.2f", stability))
+            .listStyle(.inset)
+            .navigationTitle("Voice Settings")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save Preset") {
+                        showingSavePreset = true
                     }
-                    Slider(value: $stability, in: 0...1) { editing in
-                        if !editing {
-                            viewModel.updateVoiceSettings(stability: stability, similarityBoost: similarityBoost)
-                            selectedPreset = nil
-                        }
-                    }
-                    .onChange(of: stability) { newValue in
-                        viewModel.previewVoiceSettings(stability: newValue, similarityBoost: similarityBoost)
-                    }
-                    
-                    Text("Controls consistency in voice generation")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
-                
-                VStack(alignment: .leading) {
-                    HStack {
-                        Text("Similarity Boost")
-                        Spacer()
-                        Text(String(format: "%.2f", similarityBoost))
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
                     }
-                    Slider(value: $similarityBoost, in: 0...1) { editing in
-                        if !editing {
-                            viewModel.updateVoiceSettings(stability: stability, similarityBoost: similarityBoost)
-                            selectedPreset = nil
-                        }
-                    }
-                    .onChange(of: similarityBoost) { newValue in
-                        viewModel.previewVoiceSettings(stability: stability, similarityBoost: newValue)
-                    }
-                    
-                    Text("Controls similarity to the original voice")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            
-            Section(header: Text("Actions")) {
-                Button("Preview Settings") {
-                    viewModel.previewVoiceSettings(
-                        stability: stability,
-                        similarityBoost: similarityBoost
-                    )
-                }
-                .disabled(viewModel.isGeneratingSpeech)
-                
-                Button("Save as Preset") {
-                    showingSavePreset = true
                 }
             }
         }
         .sheet(isPresented: $showingSavePreset) {
-            SavePresetView(
-                isPresented: $showingSavePreset,
-                name: $newPresetName,
-                description: $newPresetDescription,
-                category: $selectedCategory,
-                onSave: saveNewPreset
-            )
+            SavePresetView(viewModel: viewModel, isPresented: $showingSavePreset)
         }
-        .padding()
-        .onAppear {
-            stability = viewModel.voiceStability
-            similarityBoost = viewModel.voiceSimilarityBoost
-        }
-    }
-    
-    private func selectPreset(_ preset: VoicePreset) {
-        selectedPreset = preset
-        stability = preset.settings.stability
-        similarityBoost = preset.settings.similarityBoost
-        viewModel.updateVoiceSettings(
-            stability: preset.settings.stability,
-            similarityBoost: preset.settings.similarityBoost
-        )
-    }
-    
-    private func saveNewPreset() {
-        let newPreset = VoicePreset(
-            id: UUID().uuidString,
-            name: newPresetName,
-            description: newPresetDescription,
-            settings: .init(
-                stability: stability,
-                similarityBoost: similarityBoost
-            ),
-            category: selectedCategory,
-            tags: []
-        )
-        
-        viewModel.saveVoicePreset(newPreset)
-        showingSavePreset = false
-        newPresetName = ""
-        newPresetDescription = ""
-        selectedCategory = .custom
     }
 }
 
@@ -198,36 +122,46 @@ struct SearchBar: View {
                 .foregroundColor(.secondary)
             
             TextField("Search presets...", text: $text)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .textFieldStyle(.plain)
             
             if !text.isEmpty {
                 Button(action: { text = "" }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary)
                 }
+                .buttonStyle(.plain)
             }
         }
+        .padding(8)
+        .background(Color(.textBackgroundColor))
+        .cornerRadius(8)
     }
 }
 
 struct SavePresetView: View {
+    @ObservedObject var viewModel: AppViewModel
     @Binding var isPresented: Bool
-    @Binding var name: String
-    @Binding var description: String
-    @Binding var category: VoicePreset.Category
-    let onSave: () -> Void
+    @State private var name = ""
+    @State private var description = ""
+    @State private var category = VoicePreset.Category.conversation
+    @State private var tags = ""
     
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preset Details")) {
+                Section {
                     TextField("Name", text: $name)
                     TextField("Description", text: $description)
                     Picker("Category", selection: $category) {
-                        ForEach(VoicePreset.Category.allCases, id: \.self) { category in
-                            Text(category.rawValue).tag(category)
+                        ForEach(VoicePreset.Category.allCases) { category in
+                            Text(category.rawValue.capitalized).tag(category)
                         }
                     }
+                    TextField("Tags (comma separated)", text: $tags)
+                } header: {
+                    Text("Preset Details")
+                } footer: {
+                    Text("Enter details for your custom voice preset")
                 }
             }
             .navigationTitle("Save Preset")
@@ -239,7 +173,9 @@ struct SavePresetView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        onSave()
+                        let tagArray = tags.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) }
+                        viewModel.savePreset(name: name, description: description, category: category, tags: tagArray)
+                        isPresented = false
                     }
                     .disabled(name.isEmpty)
                 }

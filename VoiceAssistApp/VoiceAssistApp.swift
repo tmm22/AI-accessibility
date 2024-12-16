@@ -13,6 +13,13 @@ struct VoiceAssistApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(viewModel: viewModel)
+                .frame(minWidth: 800, minHeight: 600)
+                .background(Color(.windowBackgroundColor))
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified)
+        .commands {
+            CommandGroup(replacing: .newItem) { }
         }
     }
 }

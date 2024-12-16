@@ -6,25 +6,33 @@ struct ContentView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                TextEditor(text: $viewModel.inputText)
-                    .frame(height: 150)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                    )
+            VStack(spacing: 24) {
+                // Input Section
+                GroupBox(label: Label("Input Text", systemImage: "text.bubble")) {
+                    TextEditor(text: $viewModel.inputText)
+                        .frame(minHeight: 120, maxHeight: .infinity)
+                        .font(.body)
+                        .padding(8)
+                        .background(Color(.textBackgroundColor))
+                        .cornerRadius(8)
+                }
                 
-                HStack {
+                // Action Buttons
+                HStack(spacing: 16) {
                     Button(action: {
                         Task {
                             await viewModel.correctGrammar()
                         }
                     }) {
                         Label("Correct Grammar", systemImage: "checkmark.circle")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.accentColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                     }
+                    .buttonStyle(.plain)
                     .disabled(viewModel.inputText.isEmpty || viewModel.isProcessing)
-                    
-                    Spacer()
                     
                     Button(action: {
                         Task {
@@ -32,32 +40,45 @@ struct ContentView: View {
                         }
                     }) {
                         Label("Speak", systemImage: "speaker.wave.2")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.accentColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                     }
+                    .buttonStyle(.plain)
                     .disabled(viewModel.inputText.isEmpty || viewModel.isGeneratingSpeech)
                 }
+                .padding(.vertical, 8)
                 
+                // Output Section
                 if !viewModel.outputText.isEmpty {
-                    TextEditor(text: .constant(viewModel.outputText))
-                        .frame(height: 150)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                        )
+                    GroupBox(label: Label("Corrected Text", systemImage: "text.quote")) {
+                        TextEditor(text: .constant(viewModel.outputText))
+                            .frame(minHeight: 120, maxHeight: .infinity)
+                            .font(.body)
+                            .padding(8)
+                            .background(Color(.textBackgroundColor))
+                            .cornerRadius(8)
+                    }
                 }
                 
                 Spacer()
             }
-            .padding()
+            .padding(20)
+            .frame(minWidth: 600, minHeight: 400)
             .navigationTitle("VoiceAssist")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showingSettings = true }) {
-                        Label("Settings", systemImage: "gear")
+                        Label("Voice Settings", systemImage: "slider.horizontal.3")
+                            .labelStyle(.titleAndIcon)
                     }
                 }
             }
             .sheet(isPresented: $showingSettings) {
                 VoiceSettingsView(viewModel: viewModel)
+                    .frame(minWidth: 500, minHeight: 600)
             }
             .alert("Error", isPresented: .constant(viewModel.error != nil)) {
                 Button("OK") {

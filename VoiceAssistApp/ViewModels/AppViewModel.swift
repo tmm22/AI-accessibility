@@ -4,6 +4,7 @@ import SwiftUI
 class AppViewModel: ObservableObject {
     private var ttsService: TextToSpeechService
     private var aiService: AIService
+    // TODO: Initialize Anthropic service
     
     @Published var inputText = ""
     @Published var outputText = ""
@@ -18,6 +19,7 @@ class AppViewModel: ObservableObject {
     
     @AppStorage("ElevenLabsAPIKey") var elevenLabsApiKey: String = ""
     @AppStorage("OpenAIAPIKey") var openAIApiKey: String = ""
+    @AppStorage("AnthropicAPIKey") var anthropicApiKey: String = ""
     @AppStorage("selectedVoiceId") private var selectedVoiceId: String?
     @AppStorage("voiceStability") private var storedVoiceStability: Double = 0.75
     @AppStorage("voiceSimilarityBoost") private var storedVoiceSimilarityBoost: Double = 0.75
@@ -26,6 +28,7 @@ class AppViewModel: ObservableObject {
     init() {
         self.ttsService = TextToSpeechService(apiKey: "")
         self.aiService = AIService(apiKey: "")
+        // TODO: Initialize Anthropic service with API key
         
         // Load stored voice settings
         self.voiceSettings.stability = storedVoiceStability
@@ -42,6 +45,7 @@ class AppViewModel: ObservableObject {
     func saveAPIKeys() {
         ttsService = TextToSpeechService(apiKey: elevenLabsApiKey)
         aiService = AIService(apiKey: openAIApiKey)
+        // TODO: Initialize Anthropic service with API key
         
         Task {
             await loadVoices()
@@ -55,6 +59,10 @@ class AppViewModel: ObservableObject {
         
         if !openAIApiKey.isEmpty {
             aiService = AIService(apiKey: openAIApiKey)
+        }
+        
+        if !anthropicApiKey.isEmpty {
+            // TODO: Initialize Anthropic service with API key
         }
     }
     

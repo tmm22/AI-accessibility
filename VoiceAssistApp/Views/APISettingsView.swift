@@ -30,6 +30,18 @@ struct APISettingsView: View {
                 } footer: {
                     Text("Required for grammar correction functionality")
                 }
+                
+                Section {
+                    SecureField("Anthropic API Key", text: $viewModel.anthropicApiKey)
+                        .textFieldStyle(.roundedBorder)
+                    Text("Get your API key from [Anthropic Console](https://console.anthropic.com/)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } header: {
+                    Label("Anthropic", systemImage: "brain")
+                } footer: {
+                    Text("Required for advanced AI functionality")
+                }
             }
             .navigationTitle("API Settings")
             .toolbar {
@@ -41,6 +53,6 @@ struct APISettingsView: View {
                 }
             }
         }
-        .frame(minWidth: 400, minHeight: 300)
+        .frame(minWidth: 400, minHeight: 400)
     }
 }

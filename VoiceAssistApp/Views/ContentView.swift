@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var viewModel: AppViewModel
     @State private var showingSettings = false
+    @State private var isShowingAPISettings = false
     
     var body: some View {
         NavigationView {
@@ -48,6 +49,18 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(viewModel.inputText.isEmpty || viewModel.isGeneratingSpeech)
+                    
+                    Button(action: {
+                        isShowingAPISettings = true
+                    }) {
+                        Label("API Settings", systemImage: "key.fill")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.accentColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.vertical, 8)
                 
@@ -79,6 +92,9 @@ struct ContentView: View {
             .sheet(isPresented: $showingSettings) {
                 VoiceSettingsView(viewModel: viewModel)
                     .frame(minWidth: 500, minHeight: 600)
+            }
+            .sheet(isPresented: $isShowingAPISettings) {
+                APISettingsView(viewModel: viewModel)
             }
             .alert("Error", isPresented: .constant(viewModel.error != nil)) {
                 Button("OK") {

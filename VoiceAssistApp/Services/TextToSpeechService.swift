@@ -62,8 +62,13 @@ class TextToSpeechService: ObservableObject {
         request.addValue(apiKey, forHTTPHeaderField: "xi-api-key")
         
         let (data, _) = try await URLSession.shared.data(for: request)
-        let response = try JSONDecoder().decode([Voice].self, from: data)
-        return response
+        
+        struct VoicesResponse: Codable {
+            let voices: [Voice]
+        }
+        
+        let response = try JSONDecoder().decode(VoicesResponse.self, from: data)
+        return response.voices
     }
     
     func generateSpeech(

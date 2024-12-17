@@ -105,14 +105,26 @@ class AppViewModel: ObservableObject {
     private func loadVoices() async {
         do {
             availableVoices = try await ttsService.fetchVoices()
-            if let voiceId = selectedVoiceId {
-                selectedVoice = availableVoices.first { $0.id == voiceId }
-            } else {
-                selectedVoice = availableVoices.first
-                selectedVoiceId = selectedVoice?.id
+            if let savedVoiceId = selectedVoiceId {
+                selectedVoice = availableVoices.first { $0.id == savedVoiceId }
             }
         } catch {
             self.error = error
+            print("Error loading voices: \(error.localizedDescription)")
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .dataCorrupted(let context):
+                    print("Data corrupted: \(context.debugDescription)")
+                case .keyNotFound(let key, let context):
+                    print("Key '\(key)' not found: \(context.debugDescription)")
+                case .typeMismatch(let type, let context):
+                    print("Type '\(type)' mismatch: \(context.debugDescription)")
+                case .valueNotFound(let type, let context):
+                    print("Value of type '\(type)' not found: \(context.debugDescription)")
+                @unknown default:
+                    print("Unknown decoding error: \(decodingError)")
+                }
+            }
         }
     }
     
